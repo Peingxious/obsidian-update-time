@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { formatDate } from './date-format.fn'
 import { parseDate } from './parse-date.fn'
 
 export interface ApplyBackfillArgs {
@@ -23,7 +23,7 @@ export function applyBackfillToFrontMatter(args: ApplyBackfillArgs): boolean {
     let modified = false
 
     if (!args.frontMatter[args.createdKey]) {
-        args.frontMatter[args.createdKey] = format(args.cTime, args.dateFormat)
+        args.frontMatter[args.createdKey] = formatDate(args.cTime)
         modified = true
     }
 
@@ -33,7 +33,7 @@ export function applyBackfillToFrontMatter(args: ApplyBackfillArgs): boolean {
     )
 
     if (!args.frontMatter[args.updatedKey] || !currentUpdated) {
-        args.frontMatter[args.updatedKey] = format(args.mTime, args.dateFormat)
+        args.frontMatter[args.updatedKey] = formatDate(args.mTime)
         modified = true
     }
 

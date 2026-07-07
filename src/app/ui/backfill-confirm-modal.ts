@@ -1,4 +1,5 @@
 import { App, ButtonComponent, Modal } from 'obsidian'
+import { t } from '../i18n'
 
 export class BackfillConfirmModal extends Modal {
     private readonly fileCount: number
@@ -11,36 +12,35 @@ export class BackfillConfirmModal extends Modal {
     }
 
     override onOpen(): void {
-        this.titleEl.setText('Backfill created / updated properties')
+        this.titleEl.setText(t('backfillTitle'))
 
         const body = this.contentEl.createDiv({ cls: 'flex flex-col gap-3' })
 
+        const noteWord = this.fileCount === 1 ? 'note' : 'notes'
         body.createEl('p', {
-            text: `This will scan ${this.fileCount.toLocaleString()} Markdown ${
-                this.fileCount === 1 ? 'note' : 'notes'
-            } in your vault and add missing front-matter properties.`
+            text: t('backfillDesc', { count: this.fileCount, notes: noteWord })
         })
 
         const rulesList = body.createEl('ul', { cls: 'pl-5 m-0' })
         rulesList.createEl('li', {
-            text: 'Existing values are never overwritten (except an unparsable "updated" value, which is refreshed).'
+            text: t('backfillRule1')
         })
         rulesList.createEl('li', {
-            text: 'Files in excluded folders, Canvas files, empty notes, and Excalidraw files are skipped.'
+            text: t('backfillRule2')
         })
         rulesList.createEl('li', {
-            text: 'This operation modifies vault files. Make sure you have a backup before continuing.'
+            text: t('backfillRule3')
         })
 
         const buttonRow = this.contentEl.createDiv({
             cls: 'flex flex-row justify-end gap-2 mt-4'
         })
 
-        new ButtonComponent(buttonRow).setButtonText('Cancel').onClick(() => this.close())
+        new ButtonComponent(buttonRow).setButtonText(t('cancelBtn')).onClick(() => this.close())
 
         new ButtonComponent(buttonRow)
             .setCta()
-            .setButtonText('Run')
+            .setButtonText(t('runBtn'))
             .onClick(() => {
                 this.close()
                 this.onConfirm()

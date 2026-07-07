@@ -13,6 +13,7 @@ This plugin is a simplified reimplementation of the [update-time-on-edit plugin]
 - **Respects existing values** — `created` is never overwritten; `updated` is debounced (`MINUTES_BETWEEN_SAVES` = 1 minute) to avoid fighting active edits.
 - **Configurable property names** — pick the front-matter keys for the creation and last-update timestamps (defaults: `created`, `updated`).
 - **Edit-friendly** — updates are delayed until you stop typing (configurable **Save delay**), so they don't refresh the editor mid-edit or knock your cursor out of a table.
+- **Undisruptive** — the front-matter write for the note you're actively viewing is deferred until you switch to another note (or close it), so the editor view is never refreshed under you and CSS targeting the properties keeps displaying.
 - **One-shot backfill** — a command to add the front-matter properties to all existing notes that don't have them yet.
 - **Folder exclusions** — skip templates, archives, or any other folder.
 - **Excalidraw-aware** — Excalidraw files are detected and skipped.
@@ -61,7 +62,7 @@ Full settings reference: [docs/configuration.md](./docs/configuration.md). User 
 
 ## What the plugin accesses
 
-- **Vault read** — listens for `vault.on('modify')`. For each modified file, the plugin reads the file's content once (to skip empty notes and Excalidraw files).
+- **Vault read** — listens for `vault.on('modify')`. For each modified file, the plugin inspects the file's metadata (byte size, type) to skip empty notes and Excalidraw files — it no longer reads the full file content on every change.
 - **Vault write** — only sets two front-matter properties on `.md` files: `created` (when missing) and `updated` (debounced, every minute at most). No other file content is touched.
 - **No file enumeration loops** — the plugin does not iterate the vault on a schedule. It only reacts to Obsidian's own `modify` events.
 - **No network** — no `fetch`, no analytics, no remote services. The Buy Me a Coffee badge image in the settings tab is bundled with the plugin and rendered locally.

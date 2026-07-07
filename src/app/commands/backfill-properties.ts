@@ -7,6 +7,7 @@ import { applyBackfillToFrontMatter } from '../utils/apply-backfill-to-front-mat
 import { hasName } from '../utils/has-name.fn'
 import { log } from '../utils/log'
 import { BackfillConfirmModal } from '../ui/backfill-confirm-modal'
+import { t } from '../i18n'
 
 export interface BackfillResult {
     total: number
@@ -21,7 +22,7 @@ export const BACKFILL_COMMAND_ID = 'backfill-properties'
 export function registerBackfillPropertiesCommand(plugin: UpdateTimePlugin): void {
     plugin.addCommand({
         id: BACKFILL_COMMAND_ID,
-        name: 'Backfill created / updated properties in all notes',
+        name: t('backfillCmdName'),
         callback: () => {
             const fileCount = plugin.app.vault.getMarkdownFiles().length
             new BackfillConfirmModal(plugin.app, fileCount, () => {
@@ -41,11 +42,7 @@ export async function runBackfillProperties(plugin: UpdateTimePlugin): Promise<B
         errors: 0
     }
 
-    new Notice(
-        `Update Time: backfilling ${result.total.toLocaleString()} Markdown ${
-            result.total === 1 ? 'note' : 'notes'
-        }…`
-    )
+    new Notice(t('backfillNoticeStart', { count: result.total, notes: result.total === 1 ? 'note' : 'notes' }))
 
     const createdKey = resolvePropertyName(plugin.settings.createdPropertyName, PROPERTY_CREATED)
     const updatedKey = resolvePropertyName(plugin.settings.updatedPropertyName, PROPERTY_UPDATED)
@@ -102,9 +99,13 @@ export async function runBackfillProperties(plugin: UpdateTimePlugin): Promise<B
     }
 
     new Notice(
-        `Update Time: backfill done. Updated ${result.updated.toLocaleString()} of ${result.total.toLocaleString()} ${
-            result.total === 1 ? 'note' : 'notes'
-        }. Skipped: ${result.skipped.toLocaleString()}. Errors: ${result.errors.toLocaleString()}.`,
+        t('backfillNoticeDone', {
+            updated: result.updated.toLocaleString(),
+            total: result.total.toLocaleString(),
+            notes: result.total === 1 ? 'note' : 'notes',
+            skipped: result.skipped.toLocaleString(),
+            errors: result.errors.toLocaleString()
+        }),
         8000
     )
 

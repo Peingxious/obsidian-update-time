@@ -1,4 +1,5 @@
-@import 'tailwindcss';
+@import 'tailwindcss/theme' layer(theme);
+@import 'tailwindcss/utilities' layer(utilities);
 
 /* ========================================
    SUPPORT & UI SECTIONS
@@ -6,5 +7,5 @@
 
 /* Support section */
 .support-header-margin {
-    @apply mt-3;
+    margin-top: 0.75rem; /* mt-3 equivalent, avoids @apply which needs base */
 }

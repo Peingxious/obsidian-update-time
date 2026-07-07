@@ -1,14 +1,12 @@
 import { App, PluginSettingTab, SearchComponent, Setting } from 'obsidian'
 import { UpdateTimePlugin } from '../plugin'
 
-import { produce } from 'immer'
-import type { Draft } from 'immer'
-import type { PluginSettings } from '../types'
 import type { ArgsSearchAndRemove } from './args-search-and-remove.intf'
 import { onlyUniqueArray } from '../utils/only-unique-array.tn'
 import { FolderSuggest } from '../utils/folder-suggest'
 import { BUY_ME_A_COFFEE_BADGE_DATA_URL } from '../assets/buy-me-a-coffee'
 import { DEFAULT_SAVE_DELAY_IN_SECONDS, PROPERTY_CREATED, PROPERTY_UPDATED } from '../constants'
+import { t } from '../i18n'
 
 export class SettingsTab extends PluginSettingTab {
     plugin: UpdateTimePlugin
@@ -18,7 +16,7 @@ export class SettingsTab extends PluginSettingTab {
         this.plugin = plugin
     }
 
-    display(): void {
+    override display(): void {
         const { containerEl } = this
 
         containerEl.empty()
@@ -31,13 +29,11 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     renderSaveDelay(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('Behavior').setHeading()
+        new Setting(containerEl).setName(t('behavior')).setHeading()
 
         new Setting(containerEl)
-            .setName('Save delay (seconds)')
-            .setDesc(
-                `Wait this long after you stop typing before updating the front matter. A higher value reduces how often notes are rewritten while editing, which prevents losing cursor focus (e.g. inside tables). Default: ${DEFAULT_SAVE_DELAY_IN_SECONDS}.`
-            )
+            .setName(t('saveDelay'))
+            .setDesc(t('saveDelayDesc', { default: DEFAULT_SAVE_DELAY_IN_SECONDS }))
             .addText((text) => {
                 text.inputEl.type = 'number'
                 text.inputEl.min = '0'
@@ -49,54 +45,44 @@ export class SettingsTab extends PluginSettingTab {
                             Number.isFinite(parsed) && parsed >= 0
                                 ? parsed
                                 : DEFAULT_SAVE_DELAY_IN_SECONDS
-                        this.plugin.settings = produce(
-                            this.plugin.settings,
-                            (draft: Draft<PluginSettings>) => {
-                                draft.saveDelayInSeconds = delay
-                            }
-                        )
+                        this.plugin.settings = {
+                            ...this.plugin.settings,
+                            saveDelayInSeconds: delay
+                        }
                         await this.plugin.saveSettings()
                     })
             })
     }
 
     renderPropertyNames(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('Front-matter properties').setHeading()
+        new Setting(containerEl).setName(t('frontmatterProperties')).setHeading()
 
         new Setting(containerEl)
-            .setName('Created property name')
-            .setDesc(
-                `Front-matter key used to store the creation time. Leave empty to use the default ("${PROPERTY_CREATED}"). Renaming this only affects future writes; existing notes are not migrated.`
-            )
+            .setName(t('createdProperty'))
+            .setDesc(t('createdPropertyDesc', { default: PROPERTY_CREATED }))
             .addText((text) => {
                 text.setPlaceholder(PROPERTY_CREATED)
                     .setValue(this.plugin.settings.createdPropertyName)
                     .onChange(async (value) => {
-                        this.plugin.settings = produce(
-                            this.plugin.settings,
-                            (draft: Draft<PluginSettings>) => {
-                                draft.createdPropertyName = value
-                            }
-                        )
+                        this.plugin.settings = {
+                            ...this.plugin.settings,
+                            createdPropertyName: value
+                        }
                         await this.plugin.saveSettings()
                     })
             })
 
         new Setting(containerEl)
-            .setName('Updated property name')
-            .setDesc(
-                `Front-matter key used to store the last-update time. Leave empty to use the default ("${PROPERTY_UPDATED}"). Renaming this only affects future writes; existing notes are not migrated.`
-            )
+            .setName(t('updatedProperty'))
+            .setDesc(t('updatedPropertyDesc', { default: PROPERTY_UPDATED }))
             .addText((text) => {
                 text.setPlaceholder(PROPERTY_UPDATED)
                     .setValue(this.plugin.settings.updatedPropertyName)
                     .onChange(async (value) => {
-                        this.plugin.settings = produce(
-                            this.plugin.settings,
-                            (draft: Draft<PluginSettings>) => {
-                                draft.updatedPropertyName = value
-                            }
-                        )
+                        this.plugin.settings = {
+                            ...this.plugin.settings,
+                            updatedPropertyName: value
+                        }
                         await this.plugin.saveSettings()
                     })
             })
@@ -104,22 +90,22 @@ export class SettingsTab extends PluginSettingTab {
 
     renderFollowButton(containerEl: HTMLElement) {
         new Setting(containerEl)
-            .setName('Follow me on X')
-            .setDesc('@dSebastien')
+            .setName(t('followMe'))
+            .setDesc(t('followMeDesc'))
             .addButton((button) => {
                 button.setCta()
-                button.setButtonText('Follow me on X').onClick(() => {
+                button.setButtonText(t('followMeBtn')).onClick(() => {
                     window.open('https://x.com/dSebastien')
                 })
             })
     }
 
     renderSupportHeader(containerEl: HTMLElement) {
-        new Setting(containerEl).setName('Support').setHeading()
+        new Setting(containerEl).setName(t('support')).setHeading()
 
         const supportDesc = new DocumentFragment()
         supportDesc.createDiv({
-            text: 'Buy me a coffee to support the development of this plugin ❤️'
+            text: t('supportDesc')
         })
 
         new Setting(containerEl).setDesc(supportDesc)
@@ -133,12 +119,10 @@ export class SettingsTab extends PluginSettingTab {
         this.doSearchAndRemoveList({
             currentList: this.plugin.settings.ignoredFolders,
             setValue: async (newValue) => {
-                this.plugin.settings = produce(
-                    this.plugin.settings,
-                    (draft: Draft<PluginSettings>) => {
-                        draft.ignoredFolders = newValue
-                    }
-                )
+                this.plugin.settings = {
+                    ...this.plugin.settings,
+                    ignoredFolders: newValue
+                }
             },
             name: 'Folders to exclude',
             description:
@@ -174,7 +158,7 @@ export class SettingsTab extends PluginSettingTab {
 
         currentList.forEach((ignoreFolder) => {
             new Setting(this.containerEl).setName(ignoreFolder).addButton((button) => {
-                button.setButtonText('Remove').onClick(async () => {
+                button.setButtonText(t('removeBtn')).onClick(async () => {
                     await setValue(currentList.filter((value) => value !== ignoreFolder))
                     await this.plugin.saveSettings()
                     this.display()
@@ -189,7 +173,7 @@ export class SettingsTab extends PluginSettingTab {
         })
         const imgEl = linkEl.createEl('img')
         imgEl.src = BUY_ME_A_COFFEE_BADGE_DATA_URL
-        imgEl.alt = 'Buy me a coffee'
+        imgEl.alt = t('buyMeCoffee')
         imgEl.width = width
     }
 }

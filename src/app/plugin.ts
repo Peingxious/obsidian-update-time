@@ -4,8 +4,6 @@ import { DEFAULT_SETTINGS } from './types'
 import type { PluginSettings } from './types'
 import { SettingsTab } from './settingTab'
 import { log } from './utils/log'
-import { produce } from 'immer'
-import type { Draft } from 'immer'
 import { isExcalidrawFile } from './utils/is-excalidraw-file.fn'
 import {
     DATE_FORMAT,
@@ -20,13 +18,20 @@ import { hasName } from './utils/has-name.fn'
 import { resolvePropertyName } from './utils/resolve-property-name.fn'
 import { applyTimestampsToFrontMatter } from './utils/apply-timestamps-to-front-matter.fn'
 import { isSelfInducedModify } from './utils/is-self-induced-modify.fn'
+import {
+    ProcessFrontMatterWriter,
+    type FrontMatterWriter,
+    type TimestampInput
+} from './utils/front-matter-writer'
+import { isActiveFile } from './utils/is-active-file.fn'
+import { isEmptyFile } from './utils/is-empty-file.fn'
 import { registerCommands } from './commands'
 
 export class UpdateTimePlugin extends Plugin {
     /**
      * The plugin settings are immutable
      */
-    settings: PluginSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+    override settings: PluginSettings = { ...DEFAULT_SETTINGS }
 
     /**
      * Per-file debouncers. Each changed file is processed only once typing has
@@ -46,11 +51,26 @@ export class UpdateTimePlugin extends Plugin {
     private readonly lastWriteMtimes = new Map<string, number>()
 
     /**
+     * The write mechanism for front-matter timestamps, behind a seam so it can
+     * be swapped without touching the decision logic. Set in `onload`.
+     */
+    private writer!: FrontMatterWriter
+
+    /**
+     * Paths whose write was deferred because the note is the file currently
+     * open in the active editor. Flushed (written) once the user moves to a
+     * different note, so the live view is never refreshed under the user.
+     */
+    private readonly pendingWrites = new Set<string>()
+
+    /**
      * Executed as soon as the plugin loads
      */
     override async onload() {
         log('Initializing', 'debug')
         await this.loadSettings()
+
+        this.writer = new ProcessFrontMatterWriter(this.app)
 
         this.setupEventHandlers()
 
@@ -64,6 +84,16 @@ export class UpdateTimePlugin extends Plugin {
         this.debouncers.forEach((debouncer) => debouncer.cancel())
         this.debouncers.clear()
         this.lastWriteMtimes.clear()
+        // Best-effort flush of deferred writes before teardown. Processed
+        // asynchronously; Obsidian may unload before they complete, but the
+        // file's own mtime remains the source of truth.
+        this.pendingWrites.forEach((path) => {
+            const file = this.app.vault.getAbstractFileByPath(path)
+            if (file instanceof TFile) {
+                void this.processFile(file)
+            }
+        })
+        this.pendingWrites.clear()
     }
 
     /**
@@ -75,49 +105,48 @@ export class UpdateTimePlugin extends Plugin {
 
         if (!loadedSettings) {
             log('Using default settings', 'debug')
-            loadedSettings = produce(DEFAULT_SETTINGS, () => DEFAULT_SETTINGS)
+            loadedSettings = { ...DEFAULT_SETTINGS }
             return
         }
 
         let needToSaveSettings = false
 
-        this.settings = produce(this.settings, (draft: Draft<PluginSettings>) => {
-            if (
-                loadedSettings.ignoredFolders !== undefined &&
-                loadedSettings.ignoredFolders !== null &&
-                Array.isArray(loadedSettings.ignoredFolders)
-            ) {
-                draft.ignoredFolders = loadedSettings.ignoredFolders
-            } else {
-                log('The loaded settings miss the [ignoredFolders] property', 'debug')
-                needToSaveSettings = true
-            }
+        this.settings = { ...this.settings }
+        if (
+            loadedSettings.ignoredFolders !== undefined &&
+            loadedSettings.ignoredFolders !== null &&
+            Array.isArray(loadedSettings.ignoredFolders)
+        ) {
+            this.settings.ignoredFolders = loadedSettings.ignoredFolders
+        } else {
+            log('The loaded settings miss the [ignoredFolders] property', 'debug')
+            needToSaveSettings = true
+        }
 
-            if (typeof loadedSettings.createdPropertyName === 'string') {
-                draft.createdPropertyName = loadedSettings.createdPropertyName
-            } else {
-                log('The loaded settings miss the [createdPropertyName] property', 'debug')
-                needToSaveSettings = true
-            }
+        if (typeof loadedSettings.createdPropertyName === 'string') {
+            this.settings.createdPropertyName = loadedSettings.createdPropertyName
+        } else {
+            log('The loaded settings miss the [createdPropertyName] property', 'debug')
+            needToSaveSettings = true
+        }
 
-            if (typeof loadedSettings.updatedPropertyName === 'string') {
-                draft.updatedPropertyName = loadedSettings.updatedPropertyName
-            } else {
-                log('The loaded settings miss the [updatedPropertyName] property', 'debug')
-                needToSaveSettings = true
-            }
+        if (typeof loadedSettings.updatedPropertyName === 'string') {
+            this.settings.updatedPropertyName = loadedSettings.updatedPropertyName
+        } else {
+            log('The loaded settings miss the [updatedPropertyName] property', 'debug')
+            needToSaveSettings = true
+        }
 
-            if (
-                typeof loadedSettings.saveDelayInSeconds === 'number' &&
-                Number.isFinite(loadedSettings.saveDelayInSeconds) &&
-                loadedSettings.saveDelayInSeconds >= 0
-            ) {
-                draft.saveDelayInSeconds = loadedSettings.saveDelayInSeconds
-            } else {
-                log('The loaded settings miss the [saveDelayInSeconds] property', 'debug')
-                needToSaveSettings = true
-            }
-        })
+        if (
+            typeof loadedSettings.saveDelayInSeconds === 'number' &&
+            Number.isFinite(loadedSettings.saveDelayInSeconds) &&
+            loadedSettings.saveDelayInSeconds >= 0
+        ) {
+            this.settings.saveDelayInSeconds = loadedSettings.saveDelayInSeconds
+        } else {
+            log('The loaded settings miss the [saveDelayInSeconds] property', 'debug')
+            needToSaveSettings = true
+        }
 
         log(`Settings loaded`, 'debug', loadedSettings)
 
@@ -148,6 +177,30 @@ export class UpdateTimePlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('modify', (file) => {
                 this.handleFileChange(file)
+            })
+        )
+
+        // Candidate 4: prune per-file state for files that disappear or move so
+        // the debouncer / echo / pending maps cannot grow without bound.
+        this.registerEvent(
+            this.app.vault.on('delete', (file) => {
+                if (file instanceof TFile) {
+                    this.evict(file.path)
+                }
+            })
+        )
+        this.registerEvent(
+            this.app.vault.on('rename', (_file, oldPath) => {
+                this.evict(oldPath)
+            })
+        )
+
+        // Candidate 2: flush deferred writes when the user leaves the note that
+        // was being actively viewed (or closes it). Registered so it is cleaned
+        // up on unload (business rule #10).
+        this.registerEvent(
+            this.app.workspace.on('active-leaf-change', () => {
+                this.flushPendingWrites()
             })
         )
     }
@@ -211,6 +264,15 @@ export class UpdateTimePlugin extends Plugin {
             return
         }
 
+        const input: TimestampInput = {
+            cTime,
+            mTime,
+            createdKey,
+            updatedKey,
+            dateFormat: DATE_FORMAT,
+            minutesBetweenSaves: MINUTES_BETWEEN_SAVES
+        }
+
         // Probe the cached front matter first: if nothing would change, skip the
         // write entirely to avoid an unnecessary editor refresh.
         const cachedFrontMatter = {
@@ -218,32 +280,33 @@ export class UpdateTimePlugin extends Plugin {
         }
         const wouldChange = applyTimestampsToFrontMatter({
             frontMatter: cachedFrontMatter,
-            cTime,
-            mTime,
-            createdKey,
-            updatedKey,
-            dateFormat: DATE_FORMAT,
-            minutesBetweenSaves: MINUTES_BETWEEN_SAVES
+            ...input
         })
         if (!wouldChange) {
             return
         }
 
+        // Candidate 2: never rewrite the note the user is actively viewing. A
+        // front-matter write refreshes the editor and tears down the rendered
+        // view, which disrupts CSS that targets the properties / live editor
+        // DOM. Defer the write until the note is no longer the active file.
+        if (isActiveFile(this.app.workspace.getActiveFile()?.path, file.path)) {
+            this.pendingWrites.add(file.path)
+            return
+        }
+
+        await this.writeTimestamps(file, input)
+    }
+
+    /**
+     * Write the computed timestamps to a file through the configured writer,
+     * recording the post-write mtime so the resulting `modify` echo is ignored.
+     * Malformed YAML is caught and logged; the file is left untouched (business
+     * rule #9).
+     */
+    private async writeTimestamps(file: TFile, input: TimestampInput): Promise<void> {
         try {
-            await this.app.fileManager.processFrontMatter(
-                file,
-                (frontMatter: Record<string, unknown>) => {
-                    applyTimestampsToFrontMatter({
-                        frontMatter,
-                        cTime,
-                        mTime,
-                        createdKey,
-                        updatedKey,
-                        dateFormat: DATE_FORMAT,
-                        minutesBetweenSaves: MINUTES_BETWEEN_SAVES
-                    })
-                }
-            )
+            await this.writer.apply(file, input)
             // Record the post-write mtime so the resulting `modify` event is
             // recognised as our own echo and ignored (prevents the self-feeding
             // write loop when the save delay exceeds MINUTES_BETWEEN_SAVES).
@@ -257,6 +320,40 @@ export class UpdateTimePlugin extends Plugin {
                 )
             }
         }
+    }
+
+    /**
+     * Flush deferred writes whose target is no longer the active file. Driven by
+     * the `active-leaf-change` event; re-enters `processFile`, which will now
+     * write (the note is inactive) and clear the pending entry.
+     */
+    private flushPendingWrites(): void {
+        if (this.pendingWrites.size === 0) {
+            return
+        }
+        const activePath = this.app.workspace.getActiveFile()?.path
+        for (const path of [...this.pendingWrites]) {
+            if (path === activePath) {
+                continue
+            }
+            this.pendingWrites.delete(path)
+            const file = this.app.vault.getAbstractFileByPath(path)
+            if (file instanceof TFile) {
+                void this.processFile(file)
+            }
+        }
+    }
+
+    /**
+     * Remove every per-file trace of `path` so the debouncer / echo / pending
+     * maps cannot retain entries for files that were deleted or renamed
+     * (candidate 4).
+     */
+    private evict(path: string): void {
+        this.debouncers.get(path)?.cancel()
+        this.debouncers.delete(path)
+        this.lastWriteMtimes.delete(path)
+        this.pendingWrites.delete(path)
     }
 
     async shouldFileBeIgnored(file: TFile): Promise<boolean> {
@@ -274,9 +371,10 @@ export class UpdateTimePlugin extends Plugin {
             return true
         }
 
-        const fileContent = (await this.app.vault.read(file)).trim()
-
-        if (fileContent.length === 0) {
+        // Candidate 3: a zero-byte file is empty. Using `stat.size` avoids
+        // reading the whole file into memory on every change just to test
+        // emptiness (the previous `vault.read(file).trim()` did).
+        if (isEmptyFile(file.stat.size)) {
             return true
         }
 

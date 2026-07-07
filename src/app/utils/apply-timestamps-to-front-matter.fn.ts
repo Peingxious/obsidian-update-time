@@ -1,4 +1,4 @@
-import { add, format, isAfter } from 'date-fns'
+import { addMinutes, formatDate, isAfter } from './date-format.fn'
 import { parseDate } from './parse-date.fn'
 
 export interface ApplyTimestampsArgs {
@@ -26,7 +26,7 @@ export function applyTimestampsToFrontMatter(args: ApplyTimestampsArgs): boolean
     let modified = false
 
     if (!args.frontMatter[args.createdKey]) {
-        args.frontMatter[args.createdKey] = format(args.cTime, args.dateFormat)
+        args.frontMatter[args.createdKey] = formatDate(args.cTime)
         modified = true
     }
 
@@ -37,14 +37,14 @@ export function applyTimestampsToFrontMatter(args: ApplyTimestampsArgs): boolean
 
     // If the updated property isn't set or has no valid value, write it.
     if (!args.frontMatter[args.updatedKey] || !currentUpdated) {
-        args.frontMatter[args.updatedKey] = format(args.mTime, args.dateFormat)
+        args.frontMatter[args.updatedKey] = formatDate(args.mTime)
         return true
     }
 
     // Otherwise only refresh once the debounce window has elapsed.
-    const nextUpdate = add(currentUpdated, { minutes: args.minutesBetweenSaves })
+    const nextUpdate = addMinutes(currentUpdated, args.minutesBetweenSaves)
     if (isAfter(args.mTime, nextUpdate)) {
-        args.frontMatter[args.updatedKey] = format(args.mTime, args.dateFormat)
+        args.frontMatter[args.updatedKey] = formatDate(args.mTime)
         modified = true
     }
 
