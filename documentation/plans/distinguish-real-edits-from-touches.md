@@ -29,7 +29,7 @@ Combine a cheap positive signal with a bounded negative check:
 
 1. **`editor-change` as the positive "real edit" signal.** Obsidian fires `workspace.on('editor-change')` only when an editor's content actually changes (user typing or programmatic editor edits in an open view). When this fires for a file, mark it as having a genuine pending edit. This covers the dominant interactive case with zero hashing.
 
-2. **Content-signature as the disambiguator for non-editor `modify` events.** For a `modify` that is *not* backed by an `editor-change` mark (external/AI write, or a sync touch), compute a signature of the meaningful content and compare it to a stored baseline:
+2. **Content-signature as the disambiguator for non-editor `modify` events.** For a `modify` that is _not_ backed by an `editor-change` mark (external/AI write, or a sync touch), compute a signature of the meaningful content and compare it to a stored baseline:
     - signature = hash of (front matter **excluding** `createdKey`/`updatedKey`) + body,
     - if it equals the stored baseline → pure touch / timestamp-only sync → **skip**,
     - if it differs (or there is no baseline → see fallback) → genuine external edit → bump and store the new signature.
@@ -39,7 +39,7 @@ Combine a cheap positive signal with a bounded negative check:
 ### Why this satisfies the constraints
 
 - Typing never hashes (handled by `editor-change`).
-- Hashing happens only for files that *actively* fire a non-editor `modify` while the plugin runs — bounded by real change traffic, not vault size. Reopening after 5K external edits processes only files that fire events, one decision each, debounced; no precompute.
+- Hashing happens only for files that _actively_ fire a non-editor `modify` while the plugin runs — bounded by real change traffic, not vault size. Reopening after 5K external edits processes only files that fire events, one decision each, debounced; no precompute.
 - A missing/stale baseline falls back to the cheap heuristic instead of forcing a hash or a wrong bump.
 - Excluding the timestamp keys from the signature breaks the cross-device Syncthing loop: a propagated timestamp-only change leaves the signature unchanged → skip.
 
@@ -56,7 +56,7 @@ Composition into the signature:
 - include the body **iff** the body trigger is on;
 - include front matter **minus** the ignored-properties set (and minus `createdKey`/`updatedKey`) **iff** the front-matter trigger is on.
 
-A `modify` whose only differences fall entirely in excluded parts → signature unchanged → skip. Note: when *both* triggers are off the signature is constant and nothing ever bumps — guard against that (warn, or treat as "disabled"). When the front-matter trigger is on but a property is in the ignored list, changes to that single property alone must not bump.
+A `modify` whose only differences fall entirely in excluded parts → signature unchanged → skip. Note: when _both_ triggers are off the signature is constant and nothing ever bumps — guard against that (warn, or treat as "disabled"). When the front-matter trigger is on but a property is in the ignored list, changes to that single property alone must not bump.
 
 ## Implementation outline
 
