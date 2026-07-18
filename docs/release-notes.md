@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.2.3 (2026-07-18)
+
+### Bug Fixes
+
+- **plugin:** reliably add excluded folders and ignore blank entries ([#9](https://github.com/dsebastien/obsidian-update-time/issues/9))
+
 ## 1.2.2 (2026-07-17)
 
 ## 1.2.1 (2026-06-24)
