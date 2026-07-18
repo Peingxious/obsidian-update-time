@@ -2,10 +2,11 @@ import { AbstractInputSuggest, App, TAbstractFile, TFolder } from 'obsidian'
 
 export class FolderSuggest extends AbstractInputSuggest<TFolder> {
     constructor(
-        private inputEl: HTMLInputElement,
-        app: App
+        textInputEl: HTMLInputElement,
+        app: App,
+        private onSelectFolder?: (path: string) => void
     ) {
-        super(app, inputEl)
+        super(app, textInputEl)
     }
 
     /**
@@ -34,7 +35,12 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
     }
 
     override selectSuggestion(folder: TFolder): void {
-        this.inputEl.value = folder.path
+        // Use the base API so the input element and the suggester's internal
+        // state stay in sync, then notify the caller so it can mirror the value.
+        // Setting `this.textInputEl.value` directly (the previous approach) left
+        // listeners unaware the value changed.
+        this.setValue(folder.path)
+        this.onSelectFolder?.(folder.path)
         this.close()
     }
 }

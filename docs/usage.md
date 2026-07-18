@@ -33,7 +33,7 @@ The plugin listens to Obsidian's vault `modify` event. Any write to a `.md` file
 - The file is named `Canvas.md`.
 - The file body is empty.
 - The Excalidraw plugin is installed and reports the file as an Excalidraw drawing.
-- The file path starts with any folder listed in the plugin's **Folders to exclude** setting.
+- The file is inside any folder listed in the plugin's **Folders to exclude** setting.
 
 ## Excluding folders
 

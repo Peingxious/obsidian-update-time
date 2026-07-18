@@ -33,7 +33,7 @@ Update Time automatically maintains `created` and `updated` front-matter propert
 - **Vault write** — only writes two front-matter properties on `.md` files: `created` (when missing) and `updated` (refreshed at most once per minute). The **Backfill created / updated properties in all notes** command iterates every Markdown file in the vault on demand and applies the same fill-missing-only logic.
 - **No vault scans on a timer** — the plugin does not iterate over your vault on a schedule; it only reacts to modify events emitted by Obsidian and to the explicit backfill command.
 - **No network calls** — no analytics, no remote services. The Buy Me a Coffee badge in the settings tab is bundled inside the plugin and rendered locally.
-- **Excluded folders** — any file whose path starts with a folder listed in **Settings → Update Time** is skipped entirely (no read, no write).
+- **Excluded folders** — any file inside a folder listed in **Settings → Update Time** is skipped entirely (no read, no write).
 
 ## About
 

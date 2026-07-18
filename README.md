@@ -53,7 +53,7 @@ Open **Settings → Community plugins → Update Time** to:
 
 - Customize the front-matter keys used for the creation and last-update timestamps (defaults: `created`, `updated`).
 - Set the **Save delay** — how long to wait after you stop typing before updating the front matter (default: 2 seconds). Raise it if you lose your cursor while editing, e.g. inside tables.
-- Add folders to the exclusion list. Any note whose path starts with an excluded folder will not be touched.
+- Add folders to the exclusion list. Any note inside a listed folder will not be touched.
 
 Full settings reference: [docs/configuration.md](./docs/configuration.md). User guide: [docs/](./docs/).
 
@@ -65,7 +65,7 @@ Full settings reference: [docs/configuration.md](./docs/configuration.md). User 
 - **Vault write** — only sets two front-matter properties on `.md` files: `created` (when missing) and `updated` (debounced, every minute at most). No other file content is touched.
 - **No file enumeration loops** — the plugin does not iterate the vault on a schedule. It only reacts to Obsidian's own `modify` events.
 - **No network** — no `fetch`, no analytics, no remote services. The Buy Me a Coffee badge image in the settings tab is bundled with the plugin and rendered locally.
-- **Excluded folders** — files whose path starts with any folder listed in **Settings → Update Time** are skipped entirely (no read, no write).
+- **Excluded folders** — files inside any folder listed in **Settings → Update Time** are skipped entirely (no read, no write).
 
 ## Known issues
 

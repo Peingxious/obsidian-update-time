@@ -32,7 +32,7 @@ If you use the Excalidraw plugin, its `.excalidraw.md` files are detected via th
 Check, in order:
 
 1. **The plugin is enabled** — **Settings → Community plugins → Update Time** toggle is on.
-2. **The file is not in an excluded folder** — look at the **Folders to exclude** list in the plugin settings; any file whose path starts with one of those entries is skipped.
+2. **The file is not in an excluded folder** — look at the **Folders to exclude** list in the plugin settings; any file inside one of those folders is skipped.
 3. **The file is Markdown** — `.md` only. `.canvas`, `.excalidraw.md`, and `Canvas.md` are skipped.
 4. **The file is not empty** — an empty body short-circuits the handler.
 5. **The file's front matter is valid YAML** — malformed YAML is logged as a warning (open the developer console: **View → Toggle developer tools**) and the file is left untouched.

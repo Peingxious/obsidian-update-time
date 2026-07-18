@@ -20,6 +20,7 @@ import { hasName } from './utils/has-name.fn'
 import { resolvePropertyName } from './utils/resolve-property-name.fn'
 import { applyTimestampsToFrontMatter } from './utils/apply-timestamps-to-front-matter.fn'
 import { isSelfInducedModify } from './utils/is-self-induced-modify.fn'
+import { isInIgnoredFolder } from './utils/is-in-ignored-folder.fn'
 import { registerCommands } from './commands'
 
 export class UpdateTimePlugin extends Plugin {
@@ -284,13 +285,6 @@ export class UpdateTimePlugin extends Plugin {
             return true
         }
 
-        return this.settings.ignoredFolders.some((ignoredFolder) => {
-            if (file.path.startsWith(ignoredFolder)) {
-                //log(`Skipping because the file is part of an ignored folder: [${ignoredFolder}]`,'debug');
-                return true
-            } else {
-                return false
-            }
-        })
+        return isInIgnoredFolder(file.path, this.settings.ignoredFolders)
     }
 }
