@@ -66,6 +66,7 @@ Full settings reference: [docs/configuration.md](./docs/configuration.md). User 
 - **No file enumeration loops** — the plugin does not iterate the vault on a schedule. It only reacts to Obsidian's own `modify` events.
 - **No network** — no `fetch`, no analytics, no remote services. The Buy Me a Coffee badge image in the settings tab is bundled with the plugin and rendered locally.
 - **Excluded folders** — files inside any folder listed in **Settings → Update Time** are skipped entirely (no read, no write).
+- **What's new after updates.** After a plugin update, a one-time dialog shows the release notes you just received (including skipped versions) with ways to support development. Never shown on fresh installs or regular restarts.
 
 ## Known issues
 
