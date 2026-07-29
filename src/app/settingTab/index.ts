@@ -9,6 +9,7 @@ import { onlyUniqueArray } from '../utils/only-unique-array.tn'
 import { FolderSuggest } from '../utils/folder-suggest'
 import { BUY_ME_A_COFFEE_BADGE_DATA_URL } from '../assets/buy-me-a-coffee'
 import { DEFAULT_SAVE_DELAY_IN_SECONDS, PROPERTY_CREATED, PROPERTY_UPDATED } from '../constants'
+import { renderSupportSection } from '../ui/support-links'
 
 export class SettingsTab extends PluginSettingTab {
     plugin: UpdateTimePlugin
@@ -115,18 +116,9 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     renderSupportHeader(containerEl: HTMLElement) {
-        new Setting(containerEl).setName('Support').setHeading()
-
-        const supportDesc = new DocumentFragment()
-        supportDesc.createDiv({
-            text: 'Buy me a coffee to support the development of this plugin ❤️'
+        renderSupportSection(containerEl, (el) => {
+            this.renderBuyMeACoffeeBadge(el)
         })
-
-        new Setting(containerEl).setDesc(supportDesc)
-
-        this.renderBuyMeACoffeeBadge(containerEl)
-        const spacing = containerEl.createDiv()
-        spacing.classList.add('support-header-margin')
     }
 
     renderExcludedFolders(): void {
