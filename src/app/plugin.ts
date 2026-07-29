@@ -1,4 +1,4 @@
-import { registerWhatsNewDialog } from './whats-new'
+import { registerWhatsNewView } from './whats-new'
 import { debounce, Plugin, TAbstractFile, TFile } from 'obsidian'
 import type { Debouncer } from 'obsidian'
 import { DEFAULT_SETTINGS } from './types'
@@ -52,7 +52,7 @@ export class UpdateTimePlugin extends Plugin {
      */
     override async onload() {
         // Must run before anything can call saveData (fresh-install detection)
-        registerWhatsNewDialog(this)
+        registerWhatsNewView(this)
         log('Initializing', 'debug')
         await this.loadSettings()
 
