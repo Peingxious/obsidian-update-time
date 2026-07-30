@@ -6,6 +6,7 @@ import type { PluginSettings } from './types'
 import { SettingsTab } from './settingTab'
 import { log } from './utils/log'
 import { isExcalidrawFile } from './utils/is-excalidraw-file.fn'
+import { isInIgnoredFolder } from './utils/is-in-ignored-folder.fn'
 import {
     DATE_FORMAT,
     DEFAULT_CANVAS_FILE_NAME,

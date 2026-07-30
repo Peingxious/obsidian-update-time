@@ -15,8 +15,8 @@ describe('build constants', () => {
         expect(SRC).toBe('src')
     })
 
-    test('DIST is set to dist', () => {
-        expect(DIST).toBe('dist')
+    test('DIST is set to current directory', () => {
+        expect(DIST).toBe('.')
     })
 
     test('ASSETS_SRC is set to src/assets', () => {
@@ -27,8 +27,8 @@ describe('build constants', () => {
         expect(STYLES_SRC).toBe('src/styles.src.css')
     })
 
-    test('STYLES_OUT is set to dist/styles.css', () => {
-        expect(STYLES_OUT).toBe('dist/styles.css')
+    test('STYLES_OUT is set to styles.css', () => {
+        expect(STYLES_OUT).toBe('styles.css')
     })
 
     test('PLUGIN_ID matches the manifest id', async () => {
