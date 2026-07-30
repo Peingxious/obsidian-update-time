@@ -107,12 +107,6 @@ export class SettingsTab extends PluginSettingTab {
         supportDesc.createDiv({
             text: t('supportDesc')
         })
-
-        new Setting(containerEl).setDesc(supportDesc)
-
-        this.renderBuyMeACoffeeBadge(containerEl)
-        const spacing = containerEl.createDiv()
-        spacing.classList.add('support-header-margin')
     }
 
     renderExcludedFolders(): void {
@@ -132,27 +126,47 @@ export class SettingsTab extends PluginSettingTab {
 
     doSearchAndRemoveList({ currentList, setValue, description, name }: ArgsSearchAndRemove) {
         let searchInput: SearchComponent | undefined
+        // Mirror of the current input value. `getValue()` alone proved unreliable
+        // at click time (the suggester can blur/clear the field), which let empty
+        // values through — an empty folder entry then excludes the whole vault.
+        let currentValue = ''
+
+        const addCurrentFolder = async (): Promise<void> => {
+            if (!searchInput) {
+                return
+            }
+            const newFolder = (searchInput.getValue() || currentValue).trim()
+            // Never persist a blank entry: it would match every path and silently
+            // disable timestamp updates for the entire vault.
+            if (newFolder.length === 0) {
+                return
+            }
+
+            await setValue([...currentList, newFolder].filter(onlyUniqueArray))
+            await this.plugin.saveSettings()
+            currentValue = ''
+            searchInput.setValue('')
+            this.display()
+        }
+
         new Setting(this.containerEl)
             .setName(name)
             .setDesc(description)
             .addSearch((cb) => {
                 searchInput = cb
-                new FolderSuggest(cb.inputEl, this.app)
+                new FolderSuggest(cb.inputEl, this.app, (path) => {
+                    currentValue = path
+                })
                 cb.setPlaceholder('Example: folder1/folder2')
+                cb.onChange((value) => {
+                    currentValue = value
+                })
             })
             .addButton((cb) => {
                 cb.setIcon('plus')
                 cb.setTooltip('Add folder')
                 cb.onClick(async () => {
-                    if (!searchInput) {
-                        return
-                    }
-                    const newFolder = searchInput.getValue()
-
-                    await setValue([...currentList, newFolder].filter(onlyUniqueArray))
-                    await this.plugin.saveSettings()
-                    searchInput.setValue('')
-                    this.display()
+                    await addCurrentFolder()
                 })
             })
 

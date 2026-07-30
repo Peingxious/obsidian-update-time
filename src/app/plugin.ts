@@ -1,3 +1,4 @@
+import { registerWhatsNewView } from './whats-new'
 import { debounce, Plugin, TAbstractFile, TFile } from 'obsidian'
 import type { Debouncer } from 'obsidian'
 import { DEFAULT_SETTINGS } from './types'
@@ -67,6 +68,8 @@ export class UpdateTimePlugin extends Plugin {
      * Executed as soon as the plugin loads
      */
     override async onload() {
+        // Must run before anything can call saveData (fresh-install detection)
+        registerWhatsNewView(this)
         log('Initializing', 'debug')
         await this.loadSettings()
 
@@ -382,13 +385,6 @@ export class UpdateTimePlugin extends Plugin {
             return true
         }
 
-        return this.settings.ignoredFolders.some((ignoredFolder) => {
-            if (file.path.startsWith(ignoredFolder)) {
-                //log(`Skipping because the file is part of an ignored folder: [${ignoredFolder}]`,'debug');
-                return true
-            } else {
-                return false
-            }
-        })
+        return isInIgnoredFolder(file.path, this.settings.ignoredFolders)
     }
 }

@@ -6,7 +6,7 @@ This document defines the core business rules for the Update Time plugin. These 
 
 ## Invariants
 
-1. **Never modify files in excluded folders.** `settings.ignoredFolders` is authoritative; any file whose path starts with an entry in that list must be skipped before front matter is read or written.
+1. **Never modify files in excluded folders.** `settings.ignoredFolders` is authoritative; a file must be skipped before front matter is read or written when its path equals an entry or lies under it (path-segment match: entry `Journal` matches `Journal/x.md` but not `Journal-Archive/x.md`). Matching is centralized in `isInIgnoredFolder`. Blank/whitespace-only entries are ignored — a naive `startsWith('')` prefix check would match every path and silently disable updates for the whole vault. The settings UI must also reject blank entries before they are persisted. Rationale: issue #9.
 2. **Never overwrite a user-provided `created` value.** The `created` property is only written when it is missing from front matter. Existing values are preserved.
 3. **Never overwrite a valid `updated` value unless the debounce window has elapsed.** `updated` is refreshed only when either (a) the property is missing/unparsable, or (b) more than `MINUTES_BETWEEN_SAVES` have passed since the last recorded update.
 4. **Skip Excalidraw files.** When the Excalidraw plugin is present, `isExcalidrawFile` must be consulted and matching files skipped.
